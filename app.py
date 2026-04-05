@@ -214,33 +214,50 @@ def show_generation_buttons(cv_data, offre_row):
     offre_dict = offre_row if isinstance(offre_row, dict) else offre_row.to_dict()
     st.divider()
     st.markdown("#### 🤖 Génération automatique")
+
     c1, c2 = st.columns(2)
     with c1:
         if st.button("📄 Générer CV optimisé ATS"):
             with st.spinner("Génération du CV ATS..."):
                 text, err = generate_cv_ats(cv_data, offre_dict)
             if err:
-                st.error(f"Erreur : {err}")
+                st.session_state["cv_ats_error"] = err
+                st.session_state["cv_ats_text"] = None
             elif text:
-                st.success("CV ATS généré !")
-                st.text_area("CV optimisé ATS", text, height=380)
-                pdf, _ = create_pdf(f"CV ATS — {offre_dict.get('intitule','')}", text)
-                if pdf:
-                    st.download_button("⬇️ Télécharger CV PDF", data=pdf,
-                        file_name="cv_ats_jobfit.pdf", mime="application/pdf")
+                st.session_state["cv_ats_text"] = text
+                st.session_state["cv_ats_error"] = None
+                st.session_state["cv_ats_offre"] = offre_dict.get("intitule","")
+
+        if st.session_state.get("cv_ats_error"):
+            st.error(f"Erreur : {st.session_state['cv_ats_error']}")
+        if st.session_state.get("cv_ats_text"):
+            st.success("CV ATS généré !")
+            st.text_area("CV optimisé ATS", st.session_state["cv_ats_text"], height=380)
+            pdf, _ = create_pdf(f"CV ATS — {st.session_state.get('cv_ats_offre','')}", st.session_state["cv_ats_text"])
+            if pdf:
+                st.download_button("⬇️ Télécharger CV PDF", data=pdf,
+                    file_name="cv_ats_jobfit.pdf", mime="application/pdf", key="dl_cv")
+
     with c2:
         if st.button("✉️ Générer lettre de motivation"):
             with st.spinner("Génération de la lettre..."):
                 text, err = generate_cover_letter(cv_data, offre_dict)
             if err:
-                st.error(f"Erreur : {err}")
+                st.session_state["lm_error"] = err
+                st.session_state["lm_text"] = None
             elif text:
-                st.success("Lettre générée !")
-                st.text_area("Lettre de motivation", text, height=380)
-                pdf, _ = create_pdf("Lettre de motivation — JobFit", text)
-                if pdf:
-                    st.download_button("⬇️ Télécharger lettre PDF", data=pdf,
-                        file_name="lettre_motivation_jobfit.pdf", mime="application/pdf")
+                st.session_state["lm_text"] = text
+                st.session_state["lm_error"] = None
+
+        if st.session_state.get("lm_error"):
+            st.error(f"Erreur : {st.session_state['lm_error']}")
+        if st.session_state.get("lm_text"):
+            st.success("Lettre générée !")
+            st.text_area("Lettre de motivation", st.session_state["lm_text"], height=380)
+            pdf, _ = create_pdf("Lettre de motivation — JobFit", st.session_state["lm_text"])
+            if pdf:
+                st.download_button("⬇️ Télécharger lettre PDF", data=pdf,
+                    file_name="lettre_motivation_jobfit.pdf", mime="application/pdf", key="dl_lm")
 
 
 # ── Sidebar ────────────────────────────────────────────────────────
