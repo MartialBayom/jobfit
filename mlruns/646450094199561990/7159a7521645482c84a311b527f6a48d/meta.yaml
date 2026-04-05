@@ -1,0 +1,14 @@
+artifact_uri: /Users/martialbayom/WORKSPACE /PROJETS FIN FORMATION JEDHA/NOUVEAU TAFF/jobfit_phase2/mlruns/646450094199561990/7159a7521645482c84a311b527f6a48d/artifacts
+end_time: 1775127096168
+entry_point_name: ''
+experiment_id: '646450094199561990'
+lifecycle_stage: active
+run_id: 7159a7521645482c84a311b527f6a48d
+run_name: random_forest
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1775127093875
+status: 3
+tags: []
+user_id: martialbayom

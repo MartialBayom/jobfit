@@ -1,0 +1,14 @@
+# API only — version allégée pour Docker
+fastapi==0.109.0
+uvicorn==0.27.0
+python-dotenv==1.0.0
+pandas==2.2.0
+numpy==1.26.3
+scikit-learn==1.4.0
+sentence-transformers==2.3.1
+PyMuPDF==1.23.8
+chromadb==0.4.22
+joblib==1.3.2
+sqlalchemy==2.0.25
+requests==2.31.0
+python-multipart==0.0.9

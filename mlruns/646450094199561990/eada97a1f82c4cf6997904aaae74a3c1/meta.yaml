@@ -1,0 +1,14 @@
+artifact_uri: /Users/martialbayom/WORKSPACE /PROJETS FIN FORMATION JEDHA/NOUVEAU TAFF/jobfit_phase2/mlruns/646450094199561990/eada97a1f82c4cf6997904aaae74a3c1/artifacts
+end_time: 1775127093873
+entry_point_name: ''
+experiment_id: '646450094199561990'
+lifecycle_stage: active
+run_id: eada97a1f82c4cf6997904aaae74a3c1
+run_name: ridge
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1775127091080
+status: 3
+tags: []
+user_id: martialbayom

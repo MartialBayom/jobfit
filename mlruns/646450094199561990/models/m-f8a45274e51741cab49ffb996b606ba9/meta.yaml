@@ -1,0 +1,11 @@
+artifact_location: /Users/martialbayom/WORKSPACE /PROJETS FIN FORMATION JEDHA/NOUVEAU
+  TAFF/jobfit_phase2/mlruns/646450094199561990/models/m-f8a45274e51741cab49ffb996b606ba9/artifacts
+creation_timestamp: 1775221048724
+experiment_id: '646450094199561990'
+last_updated_timestamp: 1775221054442
+model_id: m-f8a45274e51741cab49ffb996b606ba9
+model_type: null
+name: model_ridge
+source_run_id: 9acdb34027a74746bc047b608e781022
+status: 2
+status_message: null

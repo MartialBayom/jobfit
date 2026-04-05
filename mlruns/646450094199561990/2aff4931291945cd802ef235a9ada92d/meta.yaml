@@ -1,0 +1,14 @@
+artifact_uri: /Users/martialbayom/WORKSPACE /PROJETS FIN FORMATION JEDHA/NOUVEAU TAFF/jobfit_phase2/mlruns/646450094199561990/2aff4931291945cd802ef235a9ada92d/artifacts
+end_time: 1775127098452
+entry_point_name: ''
+experiment_id: '646450094199561990'
+lifecycle_stage: active
+run_id: 2aff4931291945cd802ef235a9ada92d
+run_name: gradient_boosting
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1775127096169
+status: 3
+tags: []
+user_id: martialbayom

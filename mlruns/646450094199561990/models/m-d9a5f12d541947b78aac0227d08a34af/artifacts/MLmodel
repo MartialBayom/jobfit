@@ -1,0 +1,24 @@
+artifact_path: /Users/martialbayom/WORKSPACE /PROJETS FIN FORMATION JEDHA/NOUVEAU
+  TAFF/jobfit_phase2/mlruns/646450094199561990/models/m-d9a5f12d541947b78aac0227d08a34af/artifacts
+flavors:
+  python_function:
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.sklearn
+    model_path: model.pkl
+    predict_fn: predict
+    python_version: 3.13.5
+  sklearn:
+    code: null
+    pickled_model: model.pkl
+    serialization_format: cloudpickle
+    sklearn_version: 1.8.0
+    skops_trusted_types: null
+mlflow_version: 3.10.1
+model_id: m-d9a5f12d541947b78aac0227d08a34af
+model_size_bytes: 138148
+model_uuid: m-d9a5f12d541947b78aac0227d08a34af
+prompts: null
+run_id: 6a4e7092b2a3480da590570ffa587ab3
+utc_time_created: '2026-04-02 11:19:45.885437'

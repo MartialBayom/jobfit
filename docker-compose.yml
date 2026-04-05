@@ -1,0 +1,27 @@
+version: "3.8"
+
+services:
+  jobfit-api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - DATA_PROCESSED=/app/data/processed
+      - MODELS_DIR=/app/models
+      - CHROMA_DIR=/app/data/chroma
+      - MLFLOW_TRACKING_URI=/app/mlruns
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./mlruns:/app/mlruns
+
+  jobfit-streamlit:
+    build:
+      context: .
+      dockerfile: Dockerfile.streamlit
+    ports:
+      - "8501:8501"
+    depends_on:
+      - jobfit-api
+    environment:
+      - API_URL=http://jobfit-api:8000

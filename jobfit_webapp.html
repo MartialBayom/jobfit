@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JobFit — App</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Cabinet+Grotesk:wght@300;400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #04040a;
+  --s1: #0a0a14;
+  --s2: #10101e;
+  --s3: #181826;
+  --border: rgba(255,255,255,0.07);
+  --v: #9b6dff;
+  --t: #00d4aa;
+  --t2: #00e5b5;
+  --text: #f0f0f8;
+  --mid: #8080a0;
+  --muted: #4a4a68;
+  --fd: 'Syne', sans-serif;
+  --fb: 'Cabinet Grotesk', sans-serif;
+}
+body { background: var(--bg); color: var(--text); font-family: var(--fb); font-size: 15px; line-height: 1.6; overflow-x: hidden; -webkit-font-smoothing: antialiased; }
+
+/* Sidebar */
+.layout { display: flex; min-height: 100vh; }
+.sidebar {
+  width: 220px; flex-shrink: 0;
+  background: var(--s1);
+  border-right: 1px solid var(--border);
+  position: fixed; top: 0; left: 0; bottom: 0;
+  display: flex; flex-direction: column;
+  padding: 1.5rem 0;
+  z-index: 100;
+}
+.sidebar-logo {
+  padding: 0 1.5rem 1.5rem;
+  font-family: var(--fd); font-size: 1.1rem; font-weight: 700;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 0.5rem;
+}
+.logo-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--t); box-shadow: 0 0 10px var(--t); animation: pulse 3s infinite; }
+@keyframes pulse { 0%,100%{box-shadow:0 0 8px var(--t)} 50%{box-shadow:0 0 20px var(--t2)} }
+
+.nav-items { padding: 1rem 0; flex: 1; }
+.nav-item {
+  display: flex; align-items: center; gap: 0.7rem;
+  padding: 0.7rem 1.5rem; cursor: pointer;
+  color: var(--muted); font-size: 0.87rem; font-weight: 500;
+  transition: all 0.15s; border-left: 2px solid transparent;
+  user-select: none;
+}
+.nav-item:hover { color: var(--mid); background: rgba(255,255,255,0.02); }
+.nav-item.active { color: var(--text); border-left-color: var(--v); background: rgba(155,109,255,0.06); }
+.nav-icon { font-size: 1rem; width: 20px; text-align: center; }
+
+.sidebar-footer { padding: 1rem 1.5rem; border-top: 1px solid var(--border); }
+.sidebar-footer small { font-size: 0.72rem; color: var(--muted); }
+
+/* Main */
+.main { margin-left: 220px; min-height: 100vh; }
+.topbar {
+  position: sticky; top: 0; z-index: 50;
+  background: rgba(4,4,10,0.85); backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  padding: 1rem 2rem;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.page-title { font-family: var(--fd); font-size: 1rem; font-weight: 600; }
+.api-status {
+  display: flex; align-items: center; gap: 0.5rem;
+  font-size: 0.75rem; color: var(--muted);
+}
+.status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+.status-dot.online { background: var(--t); box-shadow: 0 0 8px var(--t); }
+
+.content { padding: 2rem; }
+
+/* Pages */
+.page { display: none; }
+.page.active { display: block; }
+
+/* Cards */
+.card {
+  background: var(--s2); border: 1px solid var(--border);
+  border-radius: 14px; padding: 1.5rem;
+  margin-bottom: 1rem;
+}
+.card-title { font-family: var(--fd); font-size: 0.9rem; font-weight: 600; margin-bottom: 1rem; color: var(--mid); text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.72rem; }
+
+/* Metrics row */
+.metrics { display: grid; grid-template-columns: repeat(4,1fr); gap: 1rem; margin-bottom: 1.5rem; }
+.metric-card {
+  background: var(--s2); border: 1px solid var(--border);
+  border-radius: 12px; padding: 1.2rem;
+}
+.metric-val { font-family: var(--fd); font-size: 1.8rem; font-weight: 700; letter-spacing: -0.02em; }
+.metric-label { font-size: 0.72rem; color: var(--muted); margin-top: 0.2rem; text-transform: uppercase; letter-spacing: 0.05em; }
+.metric-delta { font-size: 0.75rem; color: var(--t); margin-top: 0.3rem; }
+
+/* Upload zone */
+.upload-zone {
+  border: 2px dashed var(--border);
+  border-radius: 12px; padding: 2.5rem;
+  text-align: center; cursor: pointer;
+  transition: all 0.2s; margin-bottom: 1.5rem;
+}
+.upload-zone:hover, .upload-zone.drag { border-color: var(--v); background: rgba(155,109,255,0.04); }
+.upload-icon { font-size: 2rem; margin-bottom: 0.8rem; }
+.upload-text { font-size: 0.9rem; color: var(--mid); }
+.upload-sub { font-size: 0.78rem; color: var(--muted); margin-top: 0.3rem; }
+#cv-input { display: none; }
+
+/* Inputs */
+.input-group { margin-bottom: 1rem; }
+.input-label { font-size: 0.75rem; color: var(--muted); margin-bottom: 0.4rem; display: block; text-transform: uppercase; letter-spacing: 0.05em; }
+input[type=text], textarea, select {
+  width: 100%; background: var(--s3);
+  border: 1px solid var(--border); border-radius: 8px;
+  color: var(--text); font-family: var(--fb); font-size: 0.88rem;
+  padding: 0.6rem 0.9rem; outline: none;
+  transition: border-color 0.2s;
+}
+input[type=text]:focus, textarea:focus { border-color: rgba(155,109,255,0.5); }
+textarea { resize: vertical; min-height: 100px; }
+
+/* Buttons */
+.btn {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  padding: 0.65rem 1.4rem; border-radius: 8px; border: none;
+  font-family: var(--fb); font-size: 0.88rem; font-weight: 600;
+  cursor: pointer; transition: all 0.2s;
+}
+.btn-primary {
+  background: linear-gradient(135deg, var(--v), var(--t));
+  color: #fff;
+}
+.btn-primary:hover { opacity: 0.88; transform: translateY(-1px); }
+.btn-outline {
+  background: transparent; color: var(--mid);
+  border: 1px solid var(--border);
+}
+.btn-outline:hover { border-color: rgba(255,255,255,0.15); color: var(--text); }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+/* Score display */
+.score-ring-wrap {
+  display: flex; align-items: center; gap: 2rem;
+  padding: 1.5rem; background: var(--s3);
+  border-radius: 12px; margin-bottom: 1rem;
+}
+.ring-svg { width: 90px; height: 90px; flex-shrink: 0; }
+.score-info-val { font-family: var(--fd); font-size: 2.5rem; font-weight: 700; letter-spacing: -0.03em; }
+.score-info-label { font-size: 0.78rem; color: var(--muted); margin-top: 0.2rem; }
+.score-info-offre { font-size: 0.88rem; color: var(--mid); margin-top: 0.5rem; }
+
+/* Tags */
+.tags { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.tag {
+  padding: 3px 9px; border-radius: 5px;
+  font-size: 0.72rem; font-weight: 500;
+}
+.tag-ok { background: rgba(0,212,170,0.1); color: var(--t2); border: 1px solid rgba(0,212,170,0.2); }
+.tag-miss { background: rgba(255,80,80,0.08); color: #ff7070; border: 1px solid rgba(255,80,80,0.15); }
+.tag-neutral { background: rgba(155,109,255,0.08); color: #c0a0ff; border: 1px solid rgba(155,109,255,0.15); }
+
+/* Table */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
+th { text-align: left; padding: 0.6rem 0.8rem; color: var(--muted); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; border-bottom: 1px solid var(--border); font-weight: 600; }
+td { padding: 0.65rem 0.8rem; border-bottom: 1px solid rgba(255,255,255,0.03); color: var(--mid); }
+td:first-child { color: var(--text); font-weight: 500; }
+tr:hover td { background: rgba(255,255,255,0.02); }
+
+/* Score badge */
+.score-badge {
+  display: inline-flex; align-items: center;
+  padding: 2px 8px; border-radius: 6px; font-weight: 700;
+  font-family: var(--fd); font-size: 0.8rem;
+}
+.sb-high { background: rgba(0,212,170,0.12); color: var(--t2); }
+.sb-mid  { background: rgba(155,109,255,0.12); color: #c0a0ff; }
+.sb-low  { background: rgba(255,80,80,0.1); color: #ff7070; }
+
+/* Search */
+.search-bar {
+  display: flex; gap: 0.8rem; margin-bottom: 1.5rem;
+}
+.search-bar input { flex: 1; }
+.search-bar select { width: 140px; }
+
+/* Spinner */
+.spinner {
+  width: 20px; height: 20px; border-radius: 50%;
+  border: 2px solid rgba(155,109,255,0.2);
+  border-top-color: var(--v);
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Loader overlay */
+.loader {
+  display: none; align-items: center; justify-content: center;
+  gap: 0.8rem; padding: 2rem; color: var(--mid); font-size: 0.88rem;
+}
+.loader.show { display: flex; }
+
+/* Alert */
+.alert {
+  padding: 0.8rem 1rem; border-radius: 8px; font-size: 0.85rem;
+  margin-bottom: 1rem; display: none;
+}
+.alert.show { display: block; }
+.alert-info { background: rgba(155,109,255,0.08); border: 1px solid rgba(155,109,255,0.2); color: #c0a0ff; }
+.alert-err  { background: rgba(255,80,80,0.08); border: 1px solid rgba(255,80,80,0.15); color: #ff7070; }
+.alert-ok   { background: rgba(0,212,170,0.08); border: 1px solid rgba(0,212,170,0.2); color: var(--t2); }
+
+/* Advice box */
+.advice-box {
+  background: var(--s3); border: 1px solid var(--border);
+  border-radius: 10px; padding: 1.2rem;
+  font-size: 0.85rem; color: var(--mid);
+  white-space: pre-wrap; line-height: 1.7;
+}
+
+/* Grid 2col */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.grid-3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 1rem; margin-bottom: 1.5rem; }
+
+/* Chart */
+.chart-wrap { height: 260px; position: relative; }
+
+/* Empty state */
+.empty {
+  text-align: center; padding: 3rem; color: var(--muted); font-size: 0.88rem;
+}
+.empty-icon { font-size: 2rem; margin-bottom: 0.8rem; opacity: 0.4; }
+
+/* Skill row */
+.skill-row { margin-bottom: 0.8rem; }
+.skill-row-label { display: flex; justify-content: space-between; font-size: 0.78rem; color: var(--mid); margin-bottom: 0.3rem; }
+.skill-bar { height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
+.skill-fill { height: 100%; border-radius: 2px; background: linear-gradient(90deg, var(--v), var(--t)); transition: width 1s ease; }
+
+@media(max-width:768px){
+  .sidebar { display: none; }
+  .main { margin-left: 0; }
+  .metrics { grid-template-columns: 1fr 1fr; }
+  .grid-2, .grid-3 { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-dot"></div>
+    JobFit
+  </div>
+  <nav class="nav-items">
+    <div class="nav-item active" data-page="home">
+      <span class="nav-icon">🏠</span> Accueil
+    </div>
+    <div class="nav-item" data-page="analyse">
+      <span class="nav-icon">📄</span> Analyser mon CV
+    </div>
+    <div class="nav-item" data-page="coller">
+      <span class="nav-icon">✏️</span> Coller une offre
+    </div>
+    <div class="nav-item" data-page="rechercher">
+      <span class="nav-icon">🔍</span> Rechercher
+    </div>
+    <div class="nav-item" data-page="marche">
+      <span class="nav-icon">📊</span> Explorer le marché
+    </div>
+  </nav>
+  <div class="sidebar-footer">
+    <small>Jedha AI School · 2026<br>NLP · ML · RAG · MLOps</small>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+  <div class="topbar">
+    <div class="page-title" id="page-title">Accueil</div>
+    <div class="api-status">
+      <div class="status-dot" id="status-dot"></div>
+      <span id="status-text">Connexion API...</span>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- HOME -->
+    <div class="page active" id="page-home">
+      <div class="metrics" id="home-metrics">
+        <div class="metric-card">
+          <div class="metric-val" id="m-total">—</div>
+          <div class="metric-label">Offres indexées</div>
+          <div class="metric-delta">France Travail API</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-val">15+</div>
+          <div class="metric-label">Secteurs</div>
+          <div class="metric-delta">Data · Santé · Finance</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-val">3</div>
+          <div class="metric-label">Modèles ML</div>
+          <div class="metric-delta">Ridge · RF · GBM</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-val">50+</div>
+          <div class="metric-label">Compétences NLP</div>
+          <div class="metric-delta">Extraction automatique</div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Répartition par contrat</div>
+          <div class="chart-wrap"><canvas id="chart-contrat"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Top villes</div>
+          <div class="chart-wrap"><canvas id="chart-villes"></canvas></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Actions rapides</div>
+        <div style="display:flex;gap:0.8rem;flex-wrap:wrap">
+          <button class="btn btn-primary" onclick="goTo('analyse')">📄 Analyser mon CV</button>
+          <button class="btn btn-outline" onclick="goTo('coller')">✏️ Coller une offre</button>
+          <button class="btn btn-outline" onclick="goTo('rechercher')">🔍 Rechercher des offres</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ANALYSER CV -->
+    <div class="page" id="page-analyse">
+      <div class="card">
+        <div class="card-title">Upload ton CV</div>
+        <div class="upload-zone" id="upload-zone" onclick="document.getElementById('cv-input').click()">
+          <div class="upload-icon">📄</div>
+          <div class="upload-text" id="upload-text">Clique ou glisse ton CV ici</div>
+          <div class="upload-sub">PDF uniquement · max 20MB</div>
+        </div>
+        <input type="file" id="cv-input" accept=".pdf">
+
+        <div style="display:flex;gap:1rem;align-items:center;margin-bottom:1rem">
+          <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-size:0.85rem;color:var(--mid)">
+            <input type="checkbox" id="use-sample" checked style="accent-color:var(--v)">
+            Utiliser le CV fictif (sample_cv.pdf)
+          </label>
+        </div>
+
+        <div style="margin-bottom:1rem">
+          <label class="input-label">Nombre d'offres à analyser</label>
+          <input type="range" id="top-n" min="5" max="20" value="10" style="width:200px;accent-color:var(--v)">
+          <span id="top-n-val" style="font-size:0.8rem;color:var(--mid);margin-left:0.5rem">10</span>
+        </div>
+
+        <button class="btn btn-primary" id="btn-analyse" onclick="analyseCV()">
+          🎯 Analyser
+        </button>
+      </div>
+
+      <div class="loader" id="loader-analyse">
+        <div class="spinner"></div>
+        Analyse en cours...
+      </div>
+
+      <div id="analyse-result" style="display:none">
+        <div class="grid-3" id="cv-metrics"></div>
+
+        <div class="card">
+          <div class="card-title">Compétences extraites</div>
+          <div id="cv-skills"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Top offres compatibles</div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th><th>Intitulé</th><th>Entreprise</th><th>Lieu</th><th>Contrat</th><th>Score</th>
+                </tr>
+              </thead>
+              <tbody id="offres-table"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- COLLER UNE OFFRE -->
+    <div class="page" id="page-coller">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Informations de l'offre</div>
+          <div class="input-group">
+            <label class="input-label">Intitulé du poste</label>
+            <input type="text" id="c-intitule" value="Data Scientist NLP">
+          </div>
+          <div class="input-group">
+            <label class="input-label">Entreprise</label>
+            <input type="text" id="c-entreprise" value="BNP Paribas">
+          </div>
+          <div class="input-group">
+            <label class="input-label">Lieu</label>
+            <input type="text" id="c-lieu" value="Paris (75)">
+          </div>
+          <div class="input-group">
+            <label class="input-label">Type de contrat</label>
+            <select id="c-contrat">
+              <option>CDI</option><option>CDD</option><option>MIS</option>
+              <option>Stage</option><option>Alternance</option>
+            </select>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Description & compétences</div>
+          <div class="input-group">
+            <label class="input-label">Description du poste</label>
+            <textarea id="c-description" rows="6" placeholder="Colle ici la description complète..."></textarea>
+          </div>
+          <div class="input-group">
+            <label class="input-label">Compétences requises</label>
+            <input type="text" id="c-competences" placeholder="Python, SQL, ML, Docker...">
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="display:flex;align-items:center;gap:1rem">
+        <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-size:0.85rem;color:var(--mid)">
+          <input type="radio" name="cv-source" value="sample" checked style="accent-color:var(--v)">
+          CV fictif
+        </label>
+        <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-size:0.85rem;color:var(--mid)">
+          <input type="radio" name="cv-source" value="mon" style="accent-color:var(--v)">
+          Mon CV
+        </label>
+        <button class="btn btn-primary" onclick="analyseOffre()">🎯 Analyser cette offre</button>
+      </div>
+
+      <div class="loader" id="loader-coller"><div class="spinner"></div> Analyse en cours...</div>
+      <div class="alert" id="alert-coller"></div>
+
+      <div id="coller-result" style="display:none">
+        <div class="score-ring-wrap">
+          <svg class="ring-svg" viewBox="0 0 90 90">
+            <defs>
+              <linearGradient id="rg" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#9b6dff"/>
+                <stop offset="100%" stop-color="#00e5b5"/>
+              </linearGradient>
+            </defs>
+            <circle cx="45" cy="45" r="40" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="5"/>
+            <circle id="ring-fill" cx="45" cy="45" r="40" fill="none"
+              stroke="url(#rg)" stroke-width="5" stroke-linecap="round"
+              stroke-dasharray="251" stroke-dashoffset="251"
+              transform="rotate(-90 45 45)"
+              style="transition:stroke-dashoffset 1.2s ease"/>
+          </svg>
+          <div>
+            <div class="score-info-val" id="c-score-val">—</div>
+            <div class="score-info-label">Score de compatibilité</div>
+            <div class="score-info-offre" id="c-score-offre"></div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-title">Compétences matchées</div>
+            <div class="tags" id="c-matched"></div>
+          </div>
+          <div class="card">
+            <div class="card-title">Compétences manquantes</div>
+            <div class="tags" id="c-missing"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Conseils candidature</div>
+          <div class="advice-box" id="c-advice"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RECHERCHER -->
+    <div class="page" id="page-rechercher">
+      <div class="search-bar">
+        <input type="text" id="r-keywords" placeholder="data scientist, infirmier, graphiste...">
+        <select id="r-topn">
+          <option value="20">20 résultats</option>
+          <option value="50">50 résultats</option>
+        </select>
+        <button class="btn btn-primary" onclick="searchOffres()">Rechercher</button>
+      </div>
+      <div class="loader" id="loader-rechercher"><div class="spinner"></div> Recherche...</div>
+      <div class="card">
+        <div class="card-title">Résultats</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Intitulé</th><th>Entreprise</th><th>Lieu</th><th>Contrat</th><th>Expérience</th></tr></thead>
+            <tbody id="r-table"><tr><td colspan="5"><div class="empty"><div class="empty-icon">🔍</div>Lance une recherche</div></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- MARCHÉ -->
+    <div class="page" id="page-marche">
+      <div class="grid-3" id="marche-metrics">
+        <div class="metric-card"><div class="metric-val" id="mm-total">—</div><div class="metric-label">Total offres</div></div>
+        <div class="metric-card"><div class="metric-val" id="mm-cdi">—</div><div class="metric-label">CDI</div></div>
+        <div class="metric-card"><div class="metric-val" id="mm-cdd">—</div><div class="metric-label">CDD</div></div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Par type de contrat</div>
+          <div class="chart-wrap"><canvas id="chart-marche-contrat"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Top 10 villes</div>
+          <div class="chart-wrap"><canvas id="chart-marche-villes"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+</div>
+
+<script>
+const API = 'http://127.0.0.1:8001';
+const titles = { home:'Accueil', analyse:'Analyser mon CV', coller:'Coller une offre', rechercher:'Rechercher des offres', marche:'Explorer le marché' };
+
+// Nav
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => goTo(item.dataset.page));
+});
+
+function goTo(page) {
+  document.querySelectorAll('.nav-item').forEach(i => i.classList.toggle('active', i.dataset.page === page));
+  document.querySelectorAll('.page').forEach(p => p.classList.toggle('active', p.id === 'page-' + page));
+  document.getElementById('page-title').textContent = titles[page] || page;
+}
+
+// Top-n slider
+document.getElementById('top-n').addEventListener('input', e => {
+  document.getElementById('top-n-val').textContent = e.target.value;
+});
+
+// File upload
+document.getElementById('cv-input').addEventListener('change', e => {
+  const f = e.target.files[0];
+  if (f) {
+    document.getElementById('upload-text').textContent = '✓ ' + f.name;
+    document.getElementById('use-sample').checked = false;
+  }
+});
+const uz = document.getElementById('upload-zone');
+uz.addEventListener('dragover', e => { e.preventDefault(); uz.classList.add('drag'); });
+uz.addEventListener('dragleave', () => uz.classList.remove('drag'));
+uz.addEventListener('drop', e => {
+  e.preventDefault(); uz.classList.remove('drag');
+  const f = e.dataTransfer.files[0];
+  if (f && f.type === 'application/pdf') {
+    document.getElementById('cv-input').files = e.dataTransfer.files;
+    document.getElementById('upload-text').textContent = '✓ ' + f.name;
+    document.getElementById('use-sample').checked = false;
+  }
+});
+
+// API Status check
+async function checkAPI() {
+  try {
+    const r = await fetch(API + '/health', { signal: AbortSignal.timeout(3000) });
+    const d = await r.json();
+    document.getElementById('status-dot').className = 'status-dot online';
+    document.getElementById('status-text').textContent = d.offres_en_base.toLocaleString('fr-FR') + ' offres · En ligne';
+    document.getElementById('m-total').textContent = d.offres_en_base.toLocaleString('fr-FR');
+    loadStats();
+  } catch {
+    document.getElementById('status-dot').className = 'status-dot';
+    document.getElementById('status-text').textContent = 'API hors ligne';
+  }
+}
+
+// Charts helpers
+const chartDefaults = {
+  plugins: { legend: { display: false } },
+  scales: {
+    x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#5a5a78', font: { size: 10 } } },
+    y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#5a5a78', font: { size: 10 } } }
+  }
+};
+
+let charts = {};
+function makeChart(id, type, labels, data, colors) {
+  if (charts[id]) charts[id].destroy();
+  const ctx = document.getElementById(id).getContext('2d');
+  charts[id] = new Chart(ctx, {
+    type,
+    data: {
+      labels,
+      datasets: [{ data, backgroundColor: colors, borderColor: 'transparent', borderRadius: 4 }]
+    },
+    options: { ...chartDefaults, responsive: true, maintainAspectRatio: false }
+  });
+}
+
+async function loadStats() {
+  try {
+    const r = await fetch(API + '/stats');
+    const d = await r.json();
+
+    const contrats = d.par_contrat;
+    makeChart('chart-contrat', 'bar',
+      Object.keys(contrats), Object.values(contrats),
+      ['rgba(155,109,255,0.7)','rgba(0,212,170,0.7)','rgba(255,140,80,0.7)','rgba(80,160,255,0.7)','rgba(255,80,80,0.6)']
+    );
+
+    const villes = d.top_lieux;
+    makeChart('chart-villes', 'bar',
+      Object.keys(villes).map(v => v.replace(/^\d+\s*-\s*/,'')), Object.values(villes),
+      Array(10).fill('rgba(0,212,170,0.6)')
+    );
+
+    // Marché page
+    document.getElementById('mm-total').textContent = d.total_offres.toLocaleString('fr-FR');
+    document.getElementById('mm-cdi').textContent = (contrats['CDI']||0).toLocaleString('fr-FR');
+    document.getElementById('mm-cdd').textContent = (contrats['CDD']||0).toLocaleString('fr-FR');
+
+    makeChart('chart-marche-contrat', 'doughnut',
+      Object.keys(contrats), Object.values(contrats),
+      ['rgba(155,109,255,0.8)','rgba(0,212,170,0.8)','rgba(255,140,80,0.8)','rgba(80,160,255,0.8)','rgba(255,80,80,0.7)']
+    );
+    makeChart('chart-marche-villes', 'bar',
+      Object.keys(villes).map(v => v.replace(/^\d+\s*-\s*/,'')), Object.values(villes),
+      Array(10).fill('rgba(155,109,255,0.6)')
+    );
+  } catch(e) { console.error(e); }
+}
+
+// Analyse CV
+async function analyseCV() {
+  const useSample = document.getElementById('use-sample').checked;
+  const fileInput = document.getElementById('cv-input');
+  const topN = document.getElementById('top-n').value;
+
+  if (!useSample && !fileInput.files.length) {
+    alert('Upload un CV ou coche "Utiliser le CV fictif"'); return;
+  }
+
+  show('loader-analyse'); hide('analyse-result');
+  document.getElementById('btn-analyse').disabled = true;
+
+  try {
+    let cvFile;
+    if (useSample) {
+      const res = await fetch('/sample_cv.pdf').catch(() => null);
+      cvFile = null;
+    }
+
+    const fd = new FormData();
+    if (!useSample && fileInput.files[0]) fd.append('cv_file', fileInput.files[0]);
+    else {
+      // On envoie une requête vide pour trigger le sample côté API
+      const blob = new Blob([''], {type:'application/pdf'});
+      fd.append('cv_file', new File([blob], 'sample.pdf', {type:'application/pdf'}));
+    }
+    fd.append('top_n', topN);
+
+    const r = await fetch(API + '/score/cv-vs-offres?top_n=' + topN, { method:'POST', body: fd });
+    if (!r.ok) throw new Error(await r.text());
+    const d = await r.json();
+
+    // CV metrics
+    document.getElementById('cv-metrics').innerHTML = `
+      <div class="metric-card"><div class="metric-val">${d.cv_titre?.substring(0,20)||'—'}</div><div class="metric-label">Titre</div></div>
+      <div class="metric-card"><div class="metric-val">${d.nb_competences||0}</div><div class="metric-label">Compétences</div></div>
+      <div class="metric-card"><div class="metric-val">${d.top_offres?.length||0}</div><div class="metric-label">Offres scorées</div></div>
+    `;
+
+    // Table
+    const tbody = document.getElementById('offres-table');
+    tbody.innerHTML = d.top_offres.map((o,i) => {
+      const s = o.ml_score_pct;
+      const cls = s>=70?'sb-high':s>=50?'sb-mid':'sb-low';
+      const emoji = s>=70?'🟢':s>=50?'🟡':'🔴';
+      return `<tr>
+        <td style="color:var(--muted)">${i+1}</td>
+        <td>${o.intitule||''}</td>
+        <td>${o.entreprise||'—'}</td>
+        <td>${o.lieu||''}</td>
+        <td>${o.type_contrat||''}</td>
+        <td><span class="score-badge ${cls}">${emoji} ${s}%</span></td>
+      </tr>`;
+    }).join('');
+
+    show('analyse-result');
+  } catch(e) {
+    alert('Erreur : ' + e.message);
+  } finally {
+    hide('loader-analyse');
+    document.getElementById('btn-analyse').disabled = false;
+  }
+}
+
+// Analyse offre collée
+async function analyseOffre() {
+  const desc = document.getElementById('c-description').value.trim();
+  if (!desc) { showAlert('alert-coller', 'Colle une description d\'offre d\'abord.', 'info'); return; }
+
+  show('loader-coller'); hide('coller-result'); hideAlert('alert-coller');
+
+  const offre = {
+    intitule: document.getElementById('c-intitule').value,
+    description: desc,
+    entreprise: document.getElementById('c-entreprise').value,
+    lieu: document.getElementById('c-lieu').value,
+    type_contrat: document.getElementById('c-contrat').value,
+    competences: document.getElementById('c-competences').value,
+  };
+
+  try {
+    const fd = new FormData();
+    const blob = new Blob([''], {type:'application/pdf'});
+    fd.append('cv_file', new File([blob], 'sample.pdf', {type:'application/pdf'}));
+    fd.append('offre_json', JSON.stringify(offre));
+
+    const r = await fetch(API + '/score/offre-texte', { method:'POST', body: fd });
+    if (!r.ok) throw new Error(await r.text());
+    const d = await r.json();
+
+    const score = d.score;
+    const offset = 251 - (251 * score / 100);
+    document.getElementById('ring-fill').style.strokeDashoffset = offset;
+    document.getElementById('c-score-val').textContent = score.toFixed(1) + '%';
+    document.getElementById('c-score-offre').textContent = offre.intitule + ' · ' + offre.entreprise;
+
+    document.getElementById('c-matched').innerHTML =
+      (d.cv_competences||[]).slice(0,10).map(s => `<span class="tag tag-ok">${s} ✓</span>`).join('');
+    document.getElementById('c-missing').innerHTML =
+      (d.missing_skills||[]).map(s => `<span class="tag tag-miss">${s} ✗</span>`).join('') || '<span style="color:var(--muted);font-size:0.82rem">Aucune compétence manquante !</span>';
+    document.getElementById('c-advice').textContent = d.advice || '';
+
+    show('coller-result');
+  } catch(e) {
+    showAlert('alert-coller', 'Erreur : ' + e.message, 'err');
+  } finally {
+    hide('loader-coller');
+  }
+}
+
+// Search
+async function searchOffres() {
+  const kw = document.getElementById('r-keywords').value.trim();
+  const topN = document.getElementById('r-topn').value;
+  if (!kw) return;
+
+  show('loader-rechercher');
+  try {
+    const r = await fetch(`${API}/offres/search?keywords=${encodeURIComponent(kw)}&top_n=${topN}`);
+    const data = await r.json();
+    const tbody = document.getElementById('r-table');
+    if (!data.length) {
+      tbody.innerHTML = '<tr><td colspan="5"><div class="empty"><div class="empty-icon">😕</div>Aucun résultat</div></td></tr>';
+    } else {
+      tbody.innerHTML = data.map(o => `<tr>
+        <td>${o.intitule||''}</td>
+        <td>${o.entreprise||'—'}</td>
+        <td>${o.lieu||''}</td>
+        <td>${o.type_contrat||''}</td>
+        <td>${o.experience||''}</td>
+      </tr>`).join('');
+    }
+  } catch(e) { console.error(e); }
+  finally { hide('loader-rechercher'); }
+}
+
+// Helpers
+function show(id) { const el=document.getElementById(id); if(el){ el.style.display='flex'; if(el.classList.contains('loader')) el.classList.add('show'); } }
+function hide(id) { const el=document.getElementById(id); if(el){ el.style.display='none'; el.classList.remove('show'); } }
+function showAlert(id, msg, type) {
+  const el = document.getElementById(id);
+  el.textContent = msg; el.className = `alert show alert-${type}`;
+}
+function hideAlert(id) { document.getElementById(id).className = 'alert'; }
+
+// Init
+checkAPI();
+setInterval(checkAPI, 30000);
+
+// Enter to search
+document.getElementById('r-keywords').addEventListener('keydown', e => {
+  if (e.key === 'Enter') searchOffres();
+});
+</script>
+</body>
+</html>

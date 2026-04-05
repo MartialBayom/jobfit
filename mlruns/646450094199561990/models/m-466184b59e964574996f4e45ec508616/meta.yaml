@@ -1,0 +1,11 @@
+artifact_location: /Users/martialbayom/WORKSPACE /PROJETS FIN FORMATION JEDHA/NOUVEAU
+  TAFF/jobfit_phase2/mlruns/646450094199561990/models/m-466184b59e964574996f4e45ec508616/artifacts
+creation_timestamp: 1775221058958
+experiment_id: '646450094199561990'
+last_updated_timestamp: 1775221061299
+model_id: m-466184b59e964574996f4e45ec508616
+model_type: null
+name: model_random_forest
+source_run_id: d96fb50a7760485bba1491034ed09c3e
+status: 2
+status_message: null

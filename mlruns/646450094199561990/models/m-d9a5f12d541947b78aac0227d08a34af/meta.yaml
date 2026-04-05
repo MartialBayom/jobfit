@@ -1,0 +1,11 @@
+artifact_location: /Users/martialbayom/WORKSPACE /PROJETS FIN FORMATION JEDHA/NOUVEAU
+  TAFF/jobfit_phase2/mlruns/646450094199561990/models/m-d9a5f12d541947b78aac0227d08a34af/artifacts
+creation_timestamp: 1775128785878
+experiment_id: '646450094199561990'
+last_updated_timestamp: 1775128787919
+model_id: m-d9a5f12d541947b78aac0227d08a34af
+model_type: null
+name: model_gradient_boosting
+source_run_id: 6a4e7092b2a3480da590570ffa587ab3
+status: 2
+status_message: null
