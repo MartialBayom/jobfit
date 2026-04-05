@@ -1,0 +1,15 @@
+streamlit>=1.36.0
+pandas
+numpy
+joblib
+scikit-learn
+sentence-transformers
+pymupdf
+fpdf2
+plotly
+python-dotenv
+anthropic
+requests
+chromadb
+langchain
+langchain-community
