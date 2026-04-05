@@ -121,7 +121,7 @@ def generate_with_claude(prompt, max_tokens=2000):
         import anthropic
         api_key = os.getenv("ANTHROPIC_API_KEY")
         if not api_key:
-            return None, "Cle ANTHROPIC_API_KEY manquante dans .env"
+            return None, "Cle ANTHROPIC_API_KEY manquante"
         client = anthropic.Anthropic(api_key=api_key)
         msg = client.messages.create(
             model="claude-haiku-4-5-20251001",
@@ -132,9 +132,9 @@ def generate_with_claude(prompt, max_tokens=2000):
     except Exception as e:
         return None, str(e)
 
-def generate_cv_ats(cv_data, offre_row):
+def generate_cv_ats(cv_data, offre_dict):
     competences = ", ".join(cv_data.get("competences", []))
-    offre_desc  = f"{offre_row.get('intitule','')} — {offre_row.get('description','')[:500]}"
+    offre_desc  = f"{offre_dict.get('intitule','')} — {offre_dict.get('description','')[:500]}"
     prompt = f"""Tu es un expert ATS. Genere un CV optimise ATS en francais.
 
 CV candidat :
@@ -151,11 +151,11 @@ EXPERIENCES PROFESSIONNELLES
 FORMATIONS
 COMPETENCES TRANSVERSALES
 
-Regles : mots-cles exacts de l'offre, format texte pur, bullet points avec bullet, pas de tableaux.
+Regles : mots-cles exacts de l'offre, format texte pur, bullet points avec tiret.
 Reponds UNIQUEMENT avec le CV."""
     return generate_with_claude(prompt, 1500)
 
-def generate_cover_letter(cv_data, offre_row):
+def generate_cover_letter(cv_data, offre_dict):
     competences = ", ".join(cv_data.get("competences", [])[:10])
     prompt = f"""Tu es expert en lettres de motivation. Redige une lettre en francais.
 
@@ -165,9 +165,9 @@ Candidat :
 - Experience : {cv_data.get('experience',0)} ans
 
 Offre :
-- Poste : {offre_row.get('intitule','')}
-- Entreprise : {offre_row.get('entreprise','')}
-- Description : {offre_row.get('description','')[:400]}
+- Poste : {offre_dict.get('intitule','')}
+- Entreprise : {offre_dict.get('entreprise','')}
+- Description : {offre_dict.get('description','')[:400]}
 
 Structure : en-tete, objet, introduction, corps (2 §), conclusion, politesse.
 250-300 mots max. Reponds UNIQUEMENT avec la lettre."""
@@ -201,7 +201,7 @@ def create_pdf(title, content_text):
                 pdf.cell(0, 7, line, ln=True)
                 pdf.set_font("Helvetica", "", 10)
                 pdf.set_text_color(40, 40, 40)
-            elif line.startswith("•") or line.startswith("-"):
+            elif line.startswith("-") or line.startswith("•"):
                 pdf.set_x(25)
                 pdf.multi_cell(0, 5, line)
             else:
@@ -210,54 +210,48 @@ def create_pdf(title, content_text):
     except Exception as e:
         return None, str(e)
 
-def show_generation_buttons(cv_data, offre_row):
-    offre_dict = offre_row if isinstance(offre_row, dict) else offre_row.to_dict()
+def show_generation_section(cv_data, offre_dict, prefix="main"):
+    """Section génération avec session_state pour éviter le rechargement."""
     st.divider()
     st.markdown("#### 🤖 Génération automatique")
-
     c1, c2 = st.columns(2)
+
+    key_cv  = f"{prefix}_cv_text"
+    key_lm  = f"{prefix}_lm_text"
+
     with c1:
-        if st.button("📄 Générer CV optimisé ATS"):
-            with st.spinner("Génération du CV ATS..."):
+        if st.button("📄 Générer CV optimisé ATS", key=f"btn_cv_{prefix}"):
+            with st.spinner("Génération en cours..."):
                 text, err = generate_cv_ats(cv_data, offre_dict)
             if err:
-                st.session_state["cv_ats_error"] = err
-                st.session_state["cv_ats_text"] = None
-            elif text:
-                st.session_state["cv_ats_text"] = text
-                st.session_state["cv_ats_error"] = None
-                st.session_state["cv_ats_offre"] = offre_dict.get("intitule","")
+                st.error(f"Erreur : {err}")
+            else:
+                st.session_state[key_cv] = text
 
-        if st.session_state.get("cv_ats_error"):
-            st.error(f"Erreur : {st.session_state['cv_ats_error']}")
-        if st.session_state.get("cv_ats_text"):
+        if st.session_state.get(key_cv):
             st.success("CV ATS généré !")
-            st.text_area("CV optimisé ATS", st.session_state["cv_ats_text"], height=380)
-            pdf, _ = create_pdf(f"CV ATS — {st.session_state.get('cv_ats_offre','')}", st.session_state["cv_ats_text"])
+            st.text_area("CV optimisé ATS", st.session_state[key_cv], height=350, key=f"ta_cv_{prefix}")
+            pdf, _ = create_pdf(f"CV ATS — {offre_dict.get('intitule','')}", st.session_state[key_cv])
             if pdf:
                 st.download_button("⬇️ Télécharger CV PDF", data=pdf,
-                    file_name="cv_ats_jobfit.pdf", mime="application/pdf", key="dl_cv")
+                    file_name="cv_ats_jobfit.pdf", mime="application/pdf", key=f"dl_cv_{prefix}")
 
     with c2:
-        if st.button("✉️ Générer lettre de motivation"):
-            with st.spinner("Génération de la lettre..."):
+        if st.button("✉️ Générer lettre de motivation", key=f"btn_lm_{prefix}"):
+            with st.spinner("Génération en cours..."):
                 text, err = generate_cover_letter(cv_data, offre_dict)
             if err:
-                st.session_state["lm_error"] = err
-                st.session_state["lm_text"] = None
-            elif text:
-                st.session_state["lm_text"] = text
-                st.session_state["lm_error"] = None
+                st.error(f"Erreur : {err}")
+            else:
+                st.session_state[key_lm] = text
 
-        if st.session_state.get("lm_error"):
-            st.error(f"Erreur : {st.session_state['lm_error']}")
-        if st.session_state.get("lm_text"):
+        if st.session_state.get(key_lm):
             st.success("Lettre générée !")
-            st.text_area("Lettre de motivation", st.session_state["lm_text"], height=380)
-            pdf, _ = create_pdf("Lettre de motivation — JobFit", st.session_state["lm_text"])
+            st.text_area("Lettre de motivation", st.session_state[key_lm], height=350, key=f"ta_lm_{prefix}")
+            pdf, _ = create_pdf("Lettre de motivation — JobFit", st.session_state[key_lm])
             if pdf:
                 st.download_button("⬇️ Télécharger lettre PDF", data=pdf,
-                    file_name="lettre_motivation_jobfit.pdf", mime="application/pdf", key="dl_lm")
+                    file_name="lettre_motivation_jobfit.pdf", mime="application/pdf", key=f"dl_lm_{prefix}")
 
 
 # ── Sidebar ────────────────────────────────────────────────────────
@@ -288,36 +282,23 @@ if page == "🏠 Accueil":
 
     st.divider()
     st.markdown("#### Comment ça marche ?")
-
     st.markdown("""
-    <div class="jf-step">
-        <div class="jf-step-num">1</div>
-        <div>
-            <div style="color:#e8eaf6;font-weight:700;margin-bottom:0.3rem">Upload ton CV</div>
-            <div style="color:#4a5180;font-size:0.87rem">Charge ton PDF — JobFit extrait automatiquement tes compétences, ton titre et ton expérience.</div>
-        </div>
-    </div>
-    <div class="jf-step">
-        <div class="jf-step-num">2</div>
-        <div>
-            <div style="color:#e8eaf6;font-weight:700;margin-bottom:0.3rem">Trouve les offres qui matchent</div>
-            <div style="color:#4a5180;font-size:0.87rem">JobFit interroge l'API France Travail en temps réel et score les offres selon ton profil.</div>
-        </div>
-    </div>
-    <div class="jf-step">
-        <div class="jf-step-num">3</div>
-        <div>
-            <div style="color:#e8eaf6;font-weight:700;margin-bottom:0.3rem">Colle une offre spécifique</div>
-            <div style="color:#4a5180;font-size:0.87rem">Tu as trouvé une offre sur LinkedIn ou Indeed ? Colle-la pour voir ton score et obtenir des conseils.</div>
-        </div>
-    </div>
-    <div class="jf-step">
-        <div class="jf-step-num">4</div>
-        <div>
-            <div style="color:#e8eaf6;font-weight:700;margin-bottom:0.3rem">Génère ton CV ATS + Lettre</div>
-            <div style="color:#4a5180;font-size:0.87rem">Génération automatique d'un CV optimisé pour les ATS et d'une lettre de motivation personnalisée.</div>
-        </div>
-    </div>
+    <div class="jf-step"><div class="jf-step-num">1</div><div>
+        <div style="color:#e8eaf6;font-weight:700;margin-bottom:0.3rem">Upload ton CV</div>
+        <div style="color:#4a5180;font-size:0.87rem">Charge ton PDF — JobFit extrait automatiquement tes compétences, ton titre et ton expérience.</div>
+    </div></div>
+    <div class="jf-step"><div class="jf-step-num">2</div><div>
+        <div style="color:#e8eaf6;font-weight:700;margin-bottom:0.3rem">Trouve les offres qui matchent</div>
+        <div style="color:#4a5180;font-size:0.87rem">JobFit interroge l'API France Travail en temps réel et score les offres selon ton profil.</div>
+    </div></div>
+    <div class="jf-step"><div class="jf-step-num">3</div><div>
+        <div style="color:#e8eaf6;font-weight:700;margin-bottom:0.3rem">Colle une offre spécifique</div>
+        <div style="color:#4a5180;font-size:0.87rem">Tu as trouvé une offre sur LinkedIn ? Colle-la pour voir ton score et obtenir des conseils.</div>
+    </div></div>
+    <div class="jf-step"><div class="jf-step-num">4</div><div>
+        <div style="color:#e8eaf6;font-weight:700;margin-bottom:0.3rem">Génère ton CV ATS + Lettre</div>
+        <div style="color:#4a5180;font-size:0.87rem">Génération automatique d'un CV optimisé ATS et d'une lettre de motivation personnalisée.</div>
+    </div></div>
     """, unsafe_allow_html=True)
 
 
@@ -345,143 +326,147 @@ elif page == "📄 Analyser mon CV":
     if mode_realtime:
         max_rt = st.slider("Nombre d'offres à récupérer", 50, 200, 100)
         kw_rt  = st.text_input("Mots-clés", value="",
-                                placeholder="infirmier, data scientist, graphiste, comptable...")
+                                placeholder="infirmier, data scientist, graphiste...")
         st.info("⏱️ Le mode temps réel prend ~20 secondes.")
 
     if not uploaded_file:
         st.info("👆 Charge ton CV pour commencer l'analyse.")
         st.stop()
 
-    with st.spinner("Analyse en cours..."):
-        try:
-            engine, scorer, km_model = load_models()
+    # Bouton analyser
+    if st.button("🔍 Lancer l'analyse", type="primary") or "analyse_cv_done" in st.session_state:
+        if "analyse_cv_done" not in st.session_state:
+            with st.spinner("Analyse en cours..."):
+                try:
+                    engine, scorer, km_model = load_models()
 
-            if mode_realtime:
-                if not kw_rt:
-                    st.warning("Entre des mots-clés pour la recherche temps réel.")
+                    if mode_realtime:
+                        if not kw_rt:
+                            st.warning("Entre des mots-clés pour la recherche.")
+                            st.stop()
+                        from france_travail import FranceTravailClient
+                        cv_data      = parse_cv_from_upload(uploaded_file)
+                        cv_embedding = engine.embed_text(cv_data["enriched_text"])
+                        client       = FranceTravailClient()
+                        offres       = client.search_offres(keywords=kw_rt, max_results=max_rt)
+                        df_rt        = client.offres_to_dataframe(offres)
+                        if df_rt.empty:
+                            st.warning("Aucune offre trouvée.")
+                            st.stop()
+                        st.success(f"✅ {len(df_rt)} offres récupérées !")
+                        with st.spinner("Calcul des scores..."):
+                            textes  = [engine.prepare_offre_text(r) for _, r in df_rt.iterrows()]
+                            embs_rt = engine.embed_texts(textes)
+                        df_rt["ml_score_pct"] = [round(float(np.dot(cv_embedding, e)) * 100, 1) for e in embs_rt]
+                        df_scored = df_rt.sort_values("ml_score_pct", ascending=False)
+                    else:
+                        from cv_parser import parse_cv
+                        from scorer import build_features, score_offres
+                        df_offres, offres_embs, _ = load_data()
+                        cv_data      = parse_cv_from_upload(uploaded_file)
+                        cv_embedding = engine.embed_text(cv_data["enriched_text"])
+                        feat         = build_features(cv_data, df_offres, cv_embedding, offres_embs)
+                        df_scored    = score_offres(scorer, feat, df_offres)
+
+                    st.session_state["analyse_cv_done"]    = True
+                    st.session_state["cv_data"]            = cv_data
+                    st.session_state["cv_embedding"]       = cv_embedding
+                    st.session_state["df_scored"]          = df_scored
+                    st.session_state["km_model"]           = km_model
+
+                except Exception as e:
+                    st.error(f"Erreur : {e}")
                     st.stop()
-                from france_travail import FranceTravailClient
-                cv_data      = parse_cv_from_upload(uploaded_file)
-                cv_embedding = engine.embed_text(cv_data["enriched_text"])
 
-                client = FranceTravailClient()
-                offres = client.search_offres(keywords=kw_rt, max_results=max_rt)
-                df_rt  = client.offres_to_dataframe(offres)
+        # Afficher résultats depuis session_state
+        cv_data      = st.session_state["cv_data"]
+        cv_embedding = st.session_state["cv_embedding"]
+        df_scored    = st.session_state["df_scored"]
+        km_model     = st.session_state["km_model"]
 
-                if df_rt.empty:
-                    st.warning("Aucune offre trouvée. Passage en mode base locale.")
-                    mode_realtime = False
-                else:
-                    st.success(f"✅ {len(df_rt)} offres récupérées !")
-                    with st.spinner("Calcul des scores..."):
-                        textes  = [engine.prepare_offre_text(r) for _, r in df_rt.iterrows()]
-                        embs_rt = engine.embed_texts(textes)
-                    df_rt["ml_score_pct"] = [round(float(np.dot(cv_embedding, e)) * 100, 1) for e in embs_rt]
-                    df_scored = df_rt.sort_values("ml_score_pct", ascending=False)
+        st.success("✅ CV analysé !")
 
-            if not mode_realtime:
-                from cv_parser import parse_cv
-                from scorer import build_features, score_offres
-                import tempfile
-                df_offres, offres_embs, _ = load_data()
-                cv_data = parse_cv_from_upload(uploaded_file)
-                cv_embedding = engine.embed_text(cv_data["enriched_text"])
-                feat = build_features(cv_data, df_offres, cv_embedding, offres_embs)
-                df_scored = score_offres(scorer, feat, df_offres)
+        c1, c2, c3 = st.columns(3)
+        with c1: st.metric("Titre", cv_data["titre"][:28])
+        with c2: st.metric("Compétences", cv_data["nb_competences"])
+        with c3:
+            try:
+                cl = km_model.predict(cv_embedding.reshape(1,-1))[0]
+                st.metric("Cluster", f"Cluster {cl}")
+            except: st.metric("Cluster", "N/A")
 
-            st.session_state["cv_data_saved"]      = cv_data
-            st.session_state["cv_embedding_saved"]  = cv_embedding
-            st.session_state["df_scored_saved"]     = df_scored
-            st.success("✅ CV analysé avec succès !")
+        st.markdown("#### Compétences extraites")
+        for cat, skills in cv_data["competences_par_categorie"].items():
+            if skills:
+                tags = " ".join([f'<span class="skill-tag">{s}</span>' for s in skills])
+                st.markdown(f"**{cat}** : {tags}", unsafe_allow_html=True)
 
-        except Exception as e:
-            st.error(f"Erreur : {e}")
-            st.stop()
-
-    # Récupérer depuis session_state si disponible
-    if "cv_data_saved" in st.session_state:
-        cv_data      = st.session_state["cv_data_saved"]
-        cv_embedding = st.session_state["cv_embedding_saved"]
-        df_scored    = st.session_state["df_scored_saved"]
-
-    # Métriques CV
-    c1, c2, c3 = st.columns(3)
-    with c1: st.metric("Titre", cv_data["titre"][:28])
-    with c2: st.metric("Compétences", cv_data["nb_competences"])
-    with c3:
-        try:
-            cl = km_model.predict(cv_embedding.reshape(1,-1))[0]
-            st.metric("Cluster marché", f"Cluster {cl}")
-        except: st.metric("Cluster", "N/A")
-
-    # Compétences extraites
-    st.markdown("#### Compétences extraites")
-    for cat, skills in cv_data["competences_par_categorie"].items():
-        if skills:
-            tags = " ".join([f'<span class="skill-tag">{s}</span>' for s in skills])
-            st.markdown(f"**{cat}** : {tags}", unsafe_allow_html=True)
-
-    st.divider()
-
-    # Top offres
-    st.markdown("#### 🏆 Top 15 offres compatibles")
-    top15 = format_top_offres(df_scored.head(15))
-    has_url = "url" in top15.columns and top15["url"].notna().any()
-    if has_url:
-        top15["Postuler"] = top15["url"].apply(
-            lambda u: u if u and pd.notna(u) and str(u).startswith("http") else None)
-        top15_show = top15[["intitule","entreprise","lieu","Contrat","Date","Score","Postuler"]].copy()
-        top15_show.columns = ["Intitulé","Entreprise","Lieu","Contrat","Date","Score","Postuler"]
-        st.dataframe(top15_show,
-            column_config={"Postuler": st.column_config.LinkColumn("Postuler ↗")},
-            use_container_width=True, hide_index=True)
-    else:
-        top15_show = top15[["intitule","entreprise","lieu","Contrat","Date","Score"]].copy()
-        top15_show.columns = ["Intitulé","Entreprise","Lieu","Contrat","Date","Score"]
-        st.dataframe(top15_show, use_container_width=True, hide_index=True)
-
-    # Détail offre
-    st.markdown("#### 🔍 Détail d'une offre")
-    idx = st.selectbox("Sélectionne une offre", range(min(20, len(df_scored))),
-        format_func=lambda i: f"{df_scored.iloc[i]['intitule']} — {df_scored.iloc[i]['ml_score_pct']}%")
-
-    offre_sel = df_scored.iloc[idx]
-    miss      = get_missing(cv_data, offre_sel)
-    score     = offre_sel["ml_score_pct"]
-    url       = offre_sel.get("url","")
-    lien      = f'<br><a href="{url}" target="_blank">🔗 Voir l\'offre et postuler</a>' if url and pd.notna(url) and str(url).startswith("http") else ""
-    date_pub  = pd.to_datetime(offre_sel.get("date_creation",""), errors="coerce")
-    date_str  = date_pub.strftime("%d/%m/%Y") if pd.notna(date_pub) else "—"
-
-    c1, c2 = st.columns(2)
-    with c1:
-        st.markdown(f"""
-        <div class="score-box {score_color(score)}">
-            <h3>{score_emoji(score)} Score : {score}%</h3>
-            <p><b>{offre_sel['intitule']}</b></p>
-            <p>{offre_sel.get('entreprise','')} | {offre_sel.get('lieu','')} | {format_contrat(offre_sel.get('type_contrat',''))}</p>
-            <p style="color:#4a5180;font-size:0.8rem">Publié le : {date_str}</p>
-            {lien}
-        </div>""", unsafe_allow_html=True)
-    with c2:
-        if miss:
-            st.markdown("**Compétences manquantes :**")
-            st.markdown(" ".join([f'<span class="missing-tag">{s}</span>' for s in miss]), unsafe_allow_html=True)
+        st.divider()
+        st.markdown("#### 🏆 Top 15 offres compatibles")
+        top15 = format_top_offres(df_scored.head(15))
+        has_url = "url" in top15.columns and top15["url"].notna().any()
+        if has_url:
+            top15["Postuler"] = top15["url"].apply(
+                lambda u: u if u and pd.notna(u) and str(u).startswith("http") else None)
+            top15_show = top15[["intitule","entreprise","lieu","Contrat","Date","Score","Postuler"]].copy()
+            top15_show.columns = ["Intitulé","Entreprise","Lieu","Contrat","Date","Score","Postuler"]
+            st.dataframe(top15_show,
+                column_config={"Postuler": st.column_config.LinkColumn("Postuler ↗")},
+                use_container_width=True, hide_index=True)
         else:
-            st.success("Ton profil couvre toutes les compétences !")
+            top15_show = top15[["intitule","entreprise","lieu","Contrat","Date","Score"]].copy()
+            top15_show.columns = ["Intitulé","Entreprise","Lieu","Contrat","Date","Score"]
+            st.dataframe(top15_show, use_container_width=True, hide_index=True)
 
-    st.markdown("#### 💬 Conseils de candidature")
-    from chatbot import JobFitChatbot
-    advice = JobFitChatbot(cv_data).analyze_offre(offre_sel.to_dict(), score)
-    st.text_area("Analyse", advice, height=200)
+        st.markdown("#### 🔍 Détail d'une offre")
+        idx = st.selectbox("Sélectionne une offre", range(min(20, len(df_scored))),
+            format_func=lambda i: f"{df_scored.iloc[i]['intitule']} — {df_scored.iloc[i]['ml_score_pct']}%",
+            key="sel_offre_cv")
 
-    show_generation_buttons(cv_data, offre_sel)
+        offre_sel = df_scored.iloc[idx]
+        miss      = get_missing(cv_data, offre_sel)
+        score     = offre_sel["ml_score_pct"]
+        url       = offre_sel.get("url","")
+        lien      = f'<br><a href="{url}" target="_blank">🔗 Postuler</a>' if url and pd.notna(url) and str(url).startswith("http") else ""
+        date_pub  = pd.to_datetime(offre_sel.get("date_creation",""), errors="coerce")
+        date_str  = date_pub.strftime("%d/%m/%Y") if pd.notna(date_pub) else "—"
+
+        c1, c2 = st.columns(2)
+        with c1:
+            st.markdown(f"""
+            <div class="score-box {score_color(score)}">
+                <h3>{score_emoji(score)} Score : {score}%</h3>
+                <p><b>{offre_sel['intitule']}</b></p>
+                <p>{offre_sel.get('entreprise','')} | {offre_sel.get('lieu','')} | {format_contrat(offre_sel.get('type_contrat',''))}</p>
+                <p style="color:#4a5180;font-size:0.8rem">Publié le : {date_str}</p>
+                {lien}
+            </div>""", unsafe_allow_html=True)
+        with c2:
+            if miss:
+                st.markdown("**Compétences manquantes :**")
+                st.markdown(" ".join([f'<span class="missing-tag">{s}</span>' for s in miss]), unsafe_allow_html=True)
+            else:
+                st.success("Ton profil couvre toutes les compétences !")
+
+        st.markdown("#### 💬 Conseils de candidature")
+        from chatbot import JobFitChatbot
+        advice_key = f"advice_{idx}"
+        if advice_key not in st.session_state:
+            st.session_state[advice_key] = JobFitChatbot(cv_data).analyze_offre(offre_sel.to_dict(), score)
+        st.text_area("Analyse", st.session_state[advice_key], height=200, key=f"ta_advice_{idx}")
+
+        show_generation_section(cv_data, offre_sel.to_dict(), prefix=f"cv_{idx}")
+
+        if st.button("🔄 Nouvelle analyse"):
+            for key in ["analyse_cv_done","cv_data","cv_embedding","df_scored","km_model"]:
+                st.session_state.pop(key, None)
+            st.rerun()
 
 
 # ── Matcher avec une offre ─────────────────────────────────────────
 elif page == "✏️ Matcher avec une offre":
     st.title("✏️ Matcher avec une offre")
-    st.markdown("Upload ton CV et colle une offre trouvée sur LinkedIn, Indeed ou France Travail pour voir si ça matche.")
+    st.markdown("Upload ton CV et colle une offre trouvée sur LinkedIn, Indeed ou France Travail.")
 
     c1, c2 = st.columns(2)
     with c1:
@@ -493,12 +478,11 @@ elif page == "✏️ Matcher avec une offre":
                 with open(p, "rb") as f:
                     data = f.read()
                 uploaded_cv = type('obj', (object,), {'read': lambda self=None: data, 'name': 'sample_cv.pdf'})()
-
         url_offre = st.text_input("Lien de l'offre (optionnel)", placeholder="https://www.linkedin.com/jobs/...")
 
     with c2:
         offre_texte = st.text_area("Colle ici la description complète de l'offre", height=250,
-            placeholder="Colle ici le texte complet de l'offre...\n\nInclus le titre, la description et les compétences requises.")
+            placeholder="Colle ici le texte complet de l'offre...")
 
     st.divider()
 
@@ -523,38 +507,57 @@ elif page == "✏️ Matcher avec une offre":
                 score     = float(np.dot(cv_embedding, offre_emb)) * 100
                 miss      = get_missing(cv_data, offre_dict)
 
-            lien_html = f'<p><a href="{url_offre}" target="_blank">🔗 Voir l\'offre originale</a></p>' if url_offre else ''
-            st.markdown(f"""
-            <div class="score-box {score_color(score)}">
-                <h2>{score_emoji(score)} Score de compatibilité : {score:.1f}%</h2>
-                {lien_html}
-            </div>""", unsafe_allow_html=True)
+            st.session_state["match_result"] = {
+                "cv_data": cv_data, "offre_dict": offre_dict,
+                "score": score, "miss": miss
+            }
 
-            c1, c2 = st.columns(2)
-            import re as _re
-            with c1:
-                st.markdown("**Compétences matchées :**")
-                matched = [s for s in cv_data["competences"]
-                           if _re.search(r'\b'+_re.escape(s)+r'\b', offre_texte.lower())]
-                if matched:
-                    st.markdown(" ".join([f'<span class="skill-tag">{s}</span>' for s in matched]),
-                                unsafe_allow_html=True)
-                else:
-                    st.info("Aucune compétence directement identifiée.")
-            with c2:
-                if miss:
-                    st.markdown("**Compétences manquantes :**")
-                    st.markdown(" ".join([f'<span class="missing-tag">{s}</span>' for s in miss]),
-                                unsafe_allow_html=True)
-                else:
-                    st.success("Ton profil couvre toutes les compétences !")
+    if "match_result" in st.session_state:
+        r        = st.session_state["match_result"]
+        cv_data  = r["cv_data"]
+        offre_dict = r["offre_dict"]
+        score    = r["score"]
+        miss     = r["miss"]
+        url_offre = offre_dict.get("url","")
 
-            st.markdown("#### 💬 Conseils pour optimiser ta candidature")
+        lien_html = f'<p><a href="{url_offre}" target="_blank">🔗 Voir l\'offre originale</a></p>' if url_offre else ''
+        st.markdown(f"""
+        <div class="score-box {score_color(score)}">
+            <h2>{score_emoji(score)} Score de compatibilité : {score:.1f}%</h2>
+            {lien_html}
+        </div>""", unsafe_allow_html=True)
+
+        c1, c2 = st.columns(2)
+        import re as _re
+        with c1:
+            st.markdown("**Compétences matchées :**")
+            matched = [s for s in cv_data["competences"]
+                       if _re.search(r'\b'+_re.escape(s)+r'\b', offre_dict["description"].lower())]
+            if matched:
+                st.markdown(" ".join([f'<span class="skill-tag">{s}</span>' for s in matched]),
+                            unsafe_allow_html=True)
+            else:
+                st.info("Aucune compétence directement identifiée.")
+        with c2:
+            if miss:
+                st.markdown("**Compétences manquantes :**")
+                st.markdown(" ".join([f'<span class="missing-tag">{s}</span>' for s in miss]),
+                            unsafe_allow_html=True)
+            else:
+                st.success("Ton profil couvre toutes les compétences !")
+
+        st.markdown("#### 💬 Conseils pour optimiser ta candidature")
+        if "match_advice" not in st.session_state:
             from chatbot import JobFitChatbot
-            advice = JobFitChatbot(cv_data).analyze_offre(offre_dict, score)
-            st.text_area("Analyse", advice, height=220)
+            st.session_state["match_advice"] = JobFitChatbot(cv_data).analyze_offre(offre_dict, score)
+        st.text_area("Analyse", st.session_state["match_advice"], height=220)
 
-            show_generation_buttons(cv_data, offre_dict)
+        show_generation_section(cv_data, offre_dict, prefix="match")
+
+        if st.button("🔄 Nouvelle analyse"):
+            st.session_state.pop("match_result", None)
+            st.session_state.pop("match_advice", None)
+            st.rerun()
 
 
 # ── Explorer le marché ─────────────────────────────────────────────
