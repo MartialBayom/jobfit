@@ -389,11 +389,20 @@ elif page == "📄 Analyser mon CV":
                 feat = build_features(cv_data, df_offres, cv_embedding, offres_embs)
                 df_scored = score_offres(scorer, feat, df_offres)
 
+            st.session_state["cv_data_saved"]      = cv_data
+            st.session_state["cv_embedding_saved"]  = cv_embedding
+            st.session_state["df_scored_saved"]     = df_scored
             st.success("✅ CV analysé avec succès !")
 
         except Exception as e:
             st.error(f"Erreur : {e}")
             st.stop()
+
+    # Récupérer depuis session_state si disponible
+    if "cv_data_saved" in st.session_state:
+        cv_data      = st.session_state["cv_data_saved"]
+        cv_embedding = st.session_state["cv_embedding_saved"]
+        df_scored    = st.session_state["df_scored_saved"]
 
     # Métriques CV
     c1, c2, c3 = st.columns(3)
