@@ -360,13 +360,14 @@ elif page == "📄 Analyser mon CV":
                         df_rt["ml_score_pct"] = [round(float(np.dot(cv_embedding, e)) * 100, 1) for e in embs_rt]
                         df_scored = df_rt.sort_values("ml_score_pct", ascending=False)
                     else:
-                        from cv_parser import parse_cv
-                        from scorer import build_features, score_offres
                         df_offres, offres_embs, _ = load_data()
                         cv_data      = parse_cv_from_upload(uploaded_file)
                         cv_embedding = engine.embed_text(cv_data["enriched_text"])
-                        feat         = build_features(cv_data, df_offres, cv_embedding, offres_embs)
-                        df_scored    = score_offres(scorer, feat, df_offres)
+                        # Scoring universel par similarité cosinus
+                        scores = [round(float(np.dot(cv_embedding, emb)) * 100, 1) for emb in offres_embs]
+                        df_scored = df_offres.copy()
+                        df_scored["ml_score_pct"] = scores
+                        df_scored = df_scored.sort_values("ml_score_pct", ascending=False)
 
                     st.session_state["analyse_cv_done"]    = True
                     st.session_state["cv_data"]            = cv_data
